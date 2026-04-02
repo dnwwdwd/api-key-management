@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1775011132348,
+      "tag": "0000_far_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775033283578,
+      "tag": "0001_far_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775114546507,
+      "tag": "0002_mature_black_tarantula",
+      "breakpoints": true
+    }
+  ]
+}

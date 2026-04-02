@@ -1,0 +1,49 @@
+﻿lzc-sdk-version: "0.1"
+package: cloud.lazycat.app.apikeymanage
+version: 0.0.1
+name: Api Key管理
+description: 本地优先的 API Key 管理工具
+author: Api Key Manage
+locales:
+  zh:
+    name: "Api Key管理"
+    description: "本地优先的 API Key 管理工具"
+  zh_CN:
+    name: "Api Key管理"
+    description: "本地优先的 API Key 管理工具"
+  en:
+    name: "API Key Manager"
+    description: "A local-first API key management app"
+  ja:
+    name: "APIキー管理"
+    description: "ローカルファーストのAPIキー管理アプリ"
+application:
+  subdomain: apikeymanage
+  routes:
+    - /=http://web.cloud.lazycat.app.apikeymanage.lzcapp:3000
+services:
+  web:
+    image: registry.lazycat.cloud/u30387910/library/node:97cd11f6df6990e9
+    command: sh /lzcapp/pkg/content/lzc/run.sh
+    binds:
+      - /lzcapp/var/data:/lzcapp/var/data
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - DATABASE_FILE=/lzcapp/var/data/app.db
+      - HOSTNAME=0.0.0.0
+      - AUTH_SECRET=lazycat-auth-secret-change-me-please-32-bytes
+      - ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+      - SEED_ADMIN_USERNAME=admin
+      - SEED_ADMIN_PASSWORD=admin123456
+      - PORT=3000
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 240s

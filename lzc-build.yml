@@ -1,0 +1,5 @@
+buildscript: powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
+manifest: ./lzc-manifest.yml
+contentdir: ./dist
+pkgout: ./
+icon: ./icon.png

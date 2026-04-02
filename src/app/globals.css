@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --surface: #ffffff;
+  --foreground: #000000;
+  --muted: #737373;
+  --border: #e5e5e5;
+  --ring: #000000;
+  --primary: #000000;
+  --primary-hover: #262626;
+  --sidebar-bg: #000000;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: #262626;
+  --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --card-hover-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Mono", "Consolas", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+* {
+  border-color: var(--border);
+}
+
+button,
+input,
+textarea {
+  outline-color: var(--ring);
+}
+
+.sidebar-gradient {
+  background: linear-gradient(180deg, #000000 0%, #171717 100%);
+}
+
+.card-hover {
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: var(--card-hover-shadow);
+  transform: translateY(-1px);
+}
