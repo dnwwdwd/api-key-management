@@ -88,6 +88,8 @@
     "pingTest": "网络测活",
     "checkBalance": "查询余额/用量",
     "balanceUnsupportedHint": "该厂商采用企业级云计费或暂未提供公开 API，不支持直接通过 API Key 查询额度。",
+    "openBillingLink": "查看账单/用量",
+    "billingPortalLinkLabel": "前往 {provider} 查看账单/用量",
     "balanceLabel": "余额",
     "usageLabel": "用量",
     "pingSuccess": "连接成功 · HTTP {status} · {latencyMs}ms",

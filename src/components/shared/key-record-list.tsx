@@ -1,10 +1,12 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { Activity, Copy, Eye, EyeOff, Pencil, Trash2, Wallet } from "lucide-react";
+import { Activity, Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { ApiKeyView } from "@/lib/actions/api-keys";
+import { cn } from "@/lib/utils";
+import { getProviderBillingPortalLink } from "@/lib/utils/provider-billing";
 import { CodeSnippetsDialog } from "./code-snippets-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +56,8 @@ function supportsBalance(providerName: string, baseUrl: string | null) {
     normalizedBaseUrl.includes("openai.com")
   );
 }
+
+const PING_LATENCY_WARNING_MS = 500;
 
 export function KeyRecordList({ items, onEdit, onDelete }: KeyRecordListProps) {
   const td = useTranslations("dashboard");
@@ -214,6 +218,10 @@ export function KeyRecordList({ items, onEdit, onDelete }: KeyRecordListProps) {
             ? "*".repeat(Math.max(item.apiKey.length, 12))
             : item.apiKey;
           const canBalance = supportsBalance(item.providerName, item.providerBaseUrl);
+          const billingPortalLink = getProviderBillingPortalLink(
+            item.providerName,
+            item.providerBaseUrl,
+          );
           const pingStatus = pingStatusMap[item.id];
           const balanceStatus = balanceStatusMap[item.id];
 
@@ -287,16 +295,34 @@ export function KeyRecordList({ items, onEdit, onDelete }: KeyRecordListProps) {
                     <Activity className="mr-1 h-4 w-4" />
                     {td("pingTest")}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={!canBalance || Boolean(balanceLoadingMap[item.id])}
-                    onClick={() => onCheckBalance(item)}
-                  >
-                    <Wallet className="mr-1 h-4 w-4" />
-                    {td("checkBalance")}
-                  </Button>
+                  {canBalance ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={Boolean(balanceLoadingMap[item.id])}
+                      onClick={() => onCheckBalance(item)}
+                    >
+                      <Wallet className="mr-1 h-4 w-4" />
+                      {td("checkBalance")}
+                    </Button>
+                  ) : billingPortalLink ? (
+                    <Button asChild variant="secondary" size="sm">
+                      <a
+                        href={billingPortalLink.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="mr-1 h-4 w-4" />
+                        {td("openBillingLink")}
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="secondary" size="sm" disabled>
+                      <Wallet className="mr-1 h-4 w-4" />
+                      {td("checkBalance")}
+                    </Button>
+                  )}
                   <Button type="button" variant="secondary" size="sm" onClick={() => setSnippetTarget(item)}>
                     {td("codeSnippets")}
                   </Button>
@@ -312,13 +338,33 @@ export function KeyRecordList({ items, onEdit, onDelete }: KeyRecordListProps) {
 
                 {!canBalance ? (
                   <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-500">
-                    {td("balanceUnsupportedHint")}
+                    <p>{td("balanceUnsupportedHint")}</p>
+                    {billingPortalLink ? (
+                      <a
+                        href={billingPortalLink.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 font-medium text-zinc-900 underline underline-offset-4"
+                      >
+                        {td("billingPortalLinkLabel", {
+                          provider: billingPortalLink.label,
+                        })}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    ) : null}
                   </div>
                 ) : null}
 
                 {pingStatus ? (
                   pingStatus.kind === "success" ? (
-                    <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+                    <div
+                      className={cn(
+                        "rounded-md px-3 py-2 text-sm",
+                        pingStatus.latencyMs < PING_LATENCY_WARNING_MS
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border border-red-200 bg-red-50 text-red-700",
+                      )}
+                    >
                       {td("pingSuccess", {
                         status: pingStatus.status,
                         latencyMs: pingStatus.latencyMs,
@@ -344,7 +390,20 @@ export function KeyRecordList({ items, onEdit, onDelete }: KeyRecordListProps) {
                     </div>
                   ) : balanceStatus.kind === "success" && !balanceStatus.supported ? (
                     <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-500">
-                      {td("balanceUnsupportedHint")}
+                      <p>{td("balanceUnsupportedHint")}</p>
+                      {billingPortalLink ? (
+                        <a
+                          href={billingPortalLink.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 font-medium text-zinc-900 underline underline-offset-4"
+                        >
+                          {td("billingPortalLinkLabel", {
+                            provider: billingPortalLink.label,
+                          })}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

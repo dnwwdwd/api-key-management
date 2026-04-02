@@ -20,11 +20,21 @@ export type DbClient = ReturnType<typeof createDb>;
 type DbState = {
   sqlite: Database;
   db: DbClient;
+  fileVersion: string;
 };
 
 let dbStatePromise: Promise<DbState> | null = null;
 
-async function createDbState(): Promise<DbState> {
+function readDatabaseFileVersion() {
+  if (!fs.existsSync(databasePath)) {
+    return "missing";
+  }
+
+  const stat = fs.statSync(databasePath);
+  return `${stat.size}:${stat.mtimeMs}`;
+}
+
+async function createDbState(fileVersion: string): Promise<DbState> {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
 
   const require = createRequire(import.meta.url);
@@ -44,15 +54,26 @@ async function createDbState(): Promise<DbState> {
   return {
     sqlite,
     db: createDb(sqlite),
+    fileVersion,
   };
 }
 
 async function getDbState() {
+  const currentFileVersion = readDatabaseFileVersion();
+
   if (!dbStatePromise) {
-    dbStatePromise = createDbState();
+    dbStatePromise = createDbState(currentFileVersion);
+    return dbStatePromise;
   }
 
-  return dbStatePromise;
+  const state = await dbStatePromise;
+  if (state.fileVersion !== currentFileVersion) {
+    state.sqlite.close();
+    dbStatePromise = createDbState(currentFileVersion);
+    return dbStatePromise;
+  }
+
+  return state;
 }
 
 export async function getDb(): Promise<DbClient> {
@@ -64,4 +85,5 @@ export async function persistDatabase() {
   const state = await getDbState();
   const bytes = state.sqlite.export();
   fs.writeFileSync(databasePath, Buffer.from(bytes));
+  state.fileVersion = readDatabaseFileVersion();
 }

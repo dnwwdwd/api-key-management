@@ -88,6 +88,8 @@
     "pingTest": "Ping test",
     "checkBalance": "Check balance/usage",
     "balanceUnsupportedHint": "This provider uses enterprise billing or does not expose a public API for direct API-key balance checks.",
+    "openBillingLink": "Open billing/usage",
+    "billingPortalLinkLabel": "Open {provider} billing or usage page",
     "balanceLabel": "Balance",
     "usageLabel": "Usage",
     "pingSuccess": "Connected · HTTP {status} · {latencyMs}ms",

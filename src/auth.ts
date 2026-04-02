@@ -11,7 +11,20 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
+function resolveAuthSecret() {
+  if (process.env.AUTH_SECRET) {
+    return process.env.AUTH_SECRET;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "dev-auth-secret-change-me-please";
+  }
+
+  return undefined;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: resolveAuthSecret(),
   providers: [
     Credentials({
       name: "Credentials",

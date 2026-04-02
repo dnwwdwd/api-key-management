@@ -68,12 +68,120 @@ export type ModelDiscoveryResult =
 const requestTimeoutMs = 20_000;
 
 const staticFallbackModels = {
+  openai: [
+    "gpt-5.2",
+    "gpt-5.2-chat-latest",
+    "gpt-5-mini",
+  ],
   anthropic: [
-    "claude-3-5-sonnet-latest",
-    "claude-3-opus-latest",
+    "claude-sonnet-4-20250514",
+    "claude-opus-4-1-20250805",
     "claude-3-5-haiku-latest",
   ],
+  gemini: [
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+  ],
+  deepseek: [
+    "deepseek-chat",
+    "deepseek-reasoner",
+  ],
+  moonshot: [
+    "kimi-k2.5",
+    "kimi-k2",
+    "kimi-k2-thinking",
+  ],
+  zhipu: [
+    "glm-4.7-flash",
+    "glm-4.5",
+    "glm-4.5-air",
+  ],
+  xai: [
+    "grok-4.20-beta-latest",
+    "grok-4-1-fast-reasoning",
+    "grok-code-fast-1",
+  ],
+  qwen: [
+    "qwen-max-latest",
+    "qwen-plus",
+    "qwen-flash",
+  ],
+  baidu: [
+    "ERNIE-4.5-Turbo",
+    "ERNIE-X1-Turbo-32K",
+    "ERNIE-4.0-Turbo-8K",
+  ],
+  doubao: [
+    "Doubao-Seed-1.6",
+    "Doubao-Seed-1.6-flash",
+    "Doubao-1.5-pro-32k",
+  ],
+  hunyuan: [
+    "hunyuan-t1-latest",
+    "hunyuan-turbos",
+    "hunyuan-standard-256K",
+  ],
+  minimax: [
+    "MiniMax-M2.5",
+    "MiniMax-M2.5-highspeed",
+    "MiniMax-M1",
+  ],
+  lingyi: [
+    "yi-lightning",
+    "yi-large",
+    "yi-medium",
+  ],
 } as const;
+
+function uniqueModels(models: string[]) {
+  return [...new Set(models)];
+}
+
+function getFallbackModels(
+  providerKind: ProviderKind,
+  providerName: string,
+  baseUrl: string | null,
+) {
+  if (providerKind !== "unknown") {
+    const direct = staticFallbackModels[providerKind];
+    return direct ? [...direct] : null;
+  }
+
+  const normalizedName = providerName.toLowerCase();
+  const normalizedBaseUrl = baseUrl?.toLowerCase() ?? "";
+  const source = `${normalizedName} ${normalizedBaseUrl}`;
+
+  if (source.includes("xai") || source.includes("x.ai") || source.includes("grok")) {
+    return [...staticFallbackModels.xai];
+  }
+
+  if (source.includes("阿里") || source.includes("千问") || source.includes("dashscope") || source.includes("qwen")) {
+    return [...staticFallbackModels.qwen];
+  }
+
+  if (source.includes("百度") || source.includes("文心") || source.includes("qianfan") || source.includes("baidu")) {
+    return [...staticFallbackModels.baidu];
+  }
+
+  if (source.includes("字节") || source.includes("豆包") || source.includes("volc") || source.includes("ark")) {
+    return [...staticFallbackModels.doubao];
+  }
+
+  if (source.includes("腾讯") || source.includes("混元") || source.includes("hunyuan")) {
+    return [...staticFallbackModels.hunyuan];
+  }
+
+  if (source.includes("minimax")) {
+    return [...staticFallbackModels.minimax];
+  }
+
+  if (source.includes("01.ai") || source.includes("零一万物") || source.includes("lingyiwanwu")) {
+    return [...staticFallbackModels.lingyi];
+  }
+
+  return null;
+}
 
 function normalizeBaseUrl(baseUrl: string | null | undefined): string | null {
   const trimmed = baseUrl?.trim();
@@ -617,18 +725,99 @@ async function requestModelList(endpoint: string, apiKey: string) {
   }
 }
 
+async function requestAnthropicModelList(apiKey: string) {
+  const { signal, clear } = withTimeoutSignal(requestTimeoutMs);
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/models", {
+      method: "GET",
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "x-api-key": apiKey,
+      },
+      signal,
+      cache: "no-store",
+    });
+
+    const { payload, rawMessage } = await parseVendorPayload(response);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: {
+          status: response.status,
+          rawMessage,
+          payload,
+        } satisfies VendorError,
+      } as const;
+    }
+
+    const models = parseModelIds(payload);
+    if (models.length === 0) {
+      return {
+        ok: false,
+        error: {
+          status: 502,
+          rawMessage: "No model ids found in Anthropic response",
+          payload,
+        } satisfies VendorError,
+      } as const;
+    }
+
+    return {
+      ok: true,
+      models,
+    } as const;
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        status: 500,
+        rawMessage:
+          error instanceof Error ? error.message : "Network request failed",
+        payload: null,
+      } satisfies VendorError,
+    } as const;
+  } finally {
+    clear();
+  }
+}
+
 export async function runModelDiscovery(input: {
   providerName: string;
   providerBaseUrl: string | null;
   apiKey: string;
 }): Promise<ModelDiscoveryResult> {
   const providerKind = detectProviderKind(input.providerName, input.providerBaseUrl);
+  const fallbackModels = getFallbackModels(
+    providerKind,
+    input.providerName,
+    input.providerBaseUrl,
+  );
 
   if (providerKind === "anthropic") {
+    const result = await requestAnthropicModelList(input.apiKey);
+    if (result.ok) {
+      return {
+        ok: true,
+        source: "dynamic",
+        models: uniqueModels(result.models),
+      };
+    }
+
+    if (fallbackModels) {
+      return {
+        ok: true,
+        source: "fallback",
+        models: uniqueModels(fallbackModels),
+      };
+    }
+
     return {
-      ok: true,
-      source: "fallback",
-      models: [...staticFallbackModels.anthropic],
+      ok: false,
+      status: result.error.status,
+      rawMessage: result.error.rawMessage,
+      payload: result.error.payload,
     };
   }
 
@@ -656,6 +845,14 @@ export async function runModelDiscovery(input: {
 
       const models = parseGeminiModelIds(payload);
       if (models.length === 0) {
+        if (fallbackModels) {
+          return {
+            ok: true,
+            source: "fallback",
+            models: uniqueModels(fallbackModels),
+          };
+        }
+
         return {
           ok: false,
           status: 502,
@@ -667,9 +864,17 @@ export async function runModelDiscovery(input: {
       return {
         ok: true,
         source: "dynamic",
-        models,
+        models: uniqueModels(models),
       };
     } catch (error) {
+      if (fallbackModels) {
+        return {
+          ok: true,
+          source: "fallback",
+          models: uniqueModels(fallbackModels),
+        };
+      }
+
       return {
         ok: false,
         status: 500,
@@ -684,6 +889,14 @@ export async function runModelDiscovery(input: {
 
   const normalizedBaseUrl = normalizeBaseUrl(input.providerBaseUrl);
   if (!normalizedBaseUrl) {
+    if (fallbackModels) {
+      return {
+        ok: true,
+        source: "fallback",
+        models: uniqueModels(fallbackModels),
+      };
+    }
+
     return {
       ok: false,
       status: 400,
@@ -701,11 +914,19 @@ export async function runModelDiscovery(input: {
       return {
         ok: true,
         source: "dynamic",
-        models: result.models,
+        models: uniqueModels(result.models),
       };
     }
 
     lastError = result.error;
+  }
+
+  if (fallbackModels) {
+    return {
+      ok: true,
+      source: "fallback",
+      models: uniqueModels(fallbackModels),
+    };
   }
 
   return {

@@ -8,8 +8,20 @@ type CryptoResult<T> =
   | { ok: true; value: T }
   | { ok: false; messageKey: string };
 
+function resolveEncryptionKeyValue() {
+  if (process.env.ENCRYPTION_KEY) {
+    return process.env.ENCRYPTION_KEY;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "0123456789abcdef0123456789abcdef";
+  }
+
+  return undefined;
+}
+
 function getEncryptionKey(): CryptoResult<Buffer> {
-  const value = process.env.ENCRYPTION_KEY;
+  const value = resolveEncryptionKeyValue();
   if (!value) {
     return { ok: false, messageKey: "errors.encryptionKeyMissing" };
   }

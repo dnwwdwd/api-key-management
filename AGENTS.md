@@ -1,104 +1,222 @@
-# AI Agent Master Instructions (Api-key Manage)
+# AI Agent Working Guide (Api-key Manage)
 
-## 1. Project Context (项目背景)
+## 1. 文档目的
 
-你现在是一个资深的全栈开发工程师（Next.js + React专家）。我们正在开发一个名为 **"Api-Key管理" (Api-key Manage)** 的 Web 应用。
+本文件提供给参与本仓库的 AI 助手和开发者使用。目标是让后续修改能与当前项目实现保持一致，减少文档和代码之间的偏差。
 
-这是一个类似于 1Password 的轻量级本地优先 API 密钥管理工具，核心要求是：**极简、安全、响应式**。
+工作时请遵守以下原则：
 
-你的目标是严格遵循本文件中的技术栈、设计规范和开发步骤，为我生成高质量、可运行的代码。
+- 先阅读现有代码，再开始修改，不要把项目当成空白模板处理。
+- 以当前仓库真实实现为准；如果历史文档和代码冲突，优先核对代码，再向用户确认。
+- 输出方式保持通俗、客观、专业，不使用夸张或口号式表达。
+- 涉及边界不清的问题，先暂停并询问用户，不要自行扩大范围。
 
-## 2. Tech Stack & Versions (技术栈说明)
+## 2. 项目定位
 
-请在生成代码时，严格使用以下技术和库的最新稳定版本：
+“Api-Key 管理”是一个本地优先的 API Key 管理工具，面向需要管理多家 AI 服务密钥的个人开发者和小团队。
 
-- **Framework**: Next.js (App Router) + React
-- **Language**: TypeScript (严格模式)
-- **Styling**: TailwindCSS
-- **UI Components**: shadcn/ui (Radix UI) + Lucide React (图标)
-- **Database**: SQLite
-- **ORM**: Drizzle ORM
-- **Authentication**: NextAuth.js (v5 / Auth.js) - 仅使用 Credentials Provider
-- **Internationalization (i18n)**: next-intl (支持 `zh-CN` 和 `en-US`)
-- **Encryption**: Node.js 原生 `crypto` 模块 (AES-256-GCM)
+核心目标：
 
-## 3. UI/UX & Styling Rules (设计与交互规范)
+- 安全保存 API Key，数据库中不出现明文密钥。
+- 用尽量简单的界面完成录入、查看、复制、测试和日常管理。
+- 通过统一的后端代理能力，提供测活、余额或用量查询、模型发现和调用代码生成。
+- 同时支持 `zh-CN` 与 `en-US` 两种语言。
 
-- **Monochrome Design (黑白极简)**: 绝对禁止使用除黑、白、灰以外的任何彩色（除非是 Error 红或 Success 绿等必要的功能性反馈颜色）。主按钮必须是纯黑背景白字 (`bg-zinc-950 text-zinc-50`)，背景色使用 `bg-white` 或 `bg-zinc-50`。
-- **Component Usage**: 优先使用 `shadcn/ui` 提供的组件。如果需要弹窗，请使用 `Dialog` 或 `Sheet`。
-- **Responsive Layout (多端适配)**:
-  - **PC端 (md及以上)**: 使用 shadcn/ui 构建侧边菜单（API Key 展示/用量统计/设置/退出），中间为 AI 提供商列表，右侧为 API Key 单列表页。
-  - **移动端**: 单栏列表布局，保持关键操作可直接触达。
-- **Single List Rule**: API Key 页面采用**单列表组件**展示每条记录的全部字段详情与操作按钮，不再拆分“列表+详情”双组件。
-- **Fallback Rendering**: 任意字段无值统一显示 `--`。
-- **Provider Actions UI**: AI 提供商列表的编辑/删除入口统一收纳到“更多”面板，不直接平铺按钮。
-- **Account Menu Rule**: 语言切换、系统设置、退出登录统一收纳到“账号上拉菜单”，菜单触发器需展示当前登录账号。
-- **List Display Rule**: API Key 在列表中默认明文展示；时间字段仅展示“更新时间值”，不显示 `Updated At` 标签文案。
-- **Interactions**: 交互要顺滑。点击复制时调用 `navigator.clipboard` 并显示轻量级的 Toast 提示。
+## 3. 当前项目状态
 
-## 4. Database Schema (Drizzle ORM 结构要求)
+当前仓库已经不是初始化阶段，主要能力已具备：
 
-请使用以下结构定义 Drizzle Schema (`schema.ts`)：
+- 登录鉴权：使用 Auth.js / NextAuth Credentials Provider。
+- 会话时长：固定 48 小时。
+- 国际化：已接入 `next-intl`，主语言为 `zh-CN`，同时支持 `en-US`。
+- 数据库：SQLite + Drizzle ORM。
+- 密钥加密：`api_keys.api_key` 使用 AES-256-GCM 加密存储。
+- Provider 管理：支持预置厂商、自定义厂商、新增、编辑、删除空厂商。
+- API Key 管理：支持新增、编辑、删除、复制、显隐、列表展示。
+- 服务端代理接口：已提供测活、余额或用量查询、模型发现接口。
+- 分析页：已提供 `/[locale]/analytics` 页面。
+- 代码片段：已支持按语言生成调用示例，并在弹窗中复制。
 
-1. **`users`**: `id`, `username` (唯一), `password_hash`, `created_at`
-2. **`providers`**: `id`, `name`, `is_custom` (布尔值)
-   - *注意：不可包含任何图标 (icon) 字段，本系统纯文本展示厂商。*
-3. **`api_keys`**: `id`, `provider_id` (关联 providers), `name`, `api_key` (加密存储的密文), `base_url` (选填), `notes` (选填), `created_at`, `updated_at`
+如果后续继续开发，请把工作理解为“在现有实现上迭代”，而不是重新搭骨架。
 
-## 5. Security Rules (安全开发铁律)
+## 4. 技术栈与实现基线
 
-- **绝对禁止明文存储 API Key**: 存入数据库前，**必须**在 Server Action 中使用 Node.js `crypto` (AES-256-GCM) 加密 `api_key` 字段。读取时必须在服务端解密后再传给前端。加密密钥可以从环境变量 `ENCRYPTION_KEY` 获取。
-- **登录鉴权**: 使用 NextAuth Credentials。全站路由受保护，未登录必须重定向至 `/login`。登录 Cookie 时效写死为 48 小时。
-- **厂商删除约束**: 允许删除 `providers`，但仅当该厂商下关联 API Key 数量为 0；若存在关联 Key，必须拦截并提示用户先删除或转移。
+请优先沿用仓库当前技术方案，不要在未确认的情况下替换核心库。
 
-## 6. Project Structure Convention (目录结构约定)
+- Framework: Next.js App Router
+- React: React 19
+- Language: TypeScript 严格模式
+- Styling: Tailwind CSS
+- UI: shadcn/ui + Radix UI + Lucide React
+- Database: SQLite
+- ORM: Drizzle ORM
+- Auth: Auth.js / NextAuth v5 beta，且仅使用 Credentials Provider
+- i18n: next-intl
+- Toast: sonner
+- Charts: Recharts
+- Encryption: Node.js `crypto`，算法为 AES-256-GCM
 
-请严格遵循 Next.js App Router 最佳实践：
+## 5. 目录约定
 
-```
+当前项目主要目录如下：
+
+```text
 src/
 ├── app/
-│   ├── [locale]/           # next-intl 国际化根路由
-│   │   ├── (auth)/         # 登录页
-│   │   ├── (dashboard)/    # 主应用页面
+│   ├── [locale]/
+│   │   ├── (auth)/login
+│   │   ├── (dashboard)/
+│   │   │   ├── page.tsx
+│   │   │   └── analytics/page.tsx
 │   │   └── layout.tsx
-│   └── api/                # NextAuth 及其他 API 路由
+│   └── api/
+│       ├── auth/[...nextauth]
+│       ├── test-key
+│       ├── check-balance
+│       └── fetch-models
 ├── components/
-│   ├── ui/                 # shadcn 自动生成的组件
-│   └── shared/             # 业务复用组件 (如 KeyCard, ProviderTabs)
+│   ├── ui/
+│   └── shared/
 ├── lib/
-│   ├── db/                 # Drizzle 初始化与 schema
-│   ├── actions/            # Server Actions (数据库 CRUD 操作)
-│   └── utils.ts            # 工具函数 (包含 AES 加解密逻辑)
-└── messages/               # next-intl 语言包 (en.json, zh.json)
+│   ├── actions/
+│   ├── constants/
+│   ├── db/
+│   ├── integrations/
+│   └── utils/
+└── messages/
 ```
 
-## 7. Step-by-Step Implementation Plan (分步执行计划)
+新增代码时尽量放在现有分层中：
 
-当你（AI）准备好开始写代码时，请严格按照以下 Phase 顺序向我确认，并在我同意后逐个执行：
+- 数据读写与表结构放在 `src/lib/db`
+- Server Actions 放在 `src/lib/actions`
+- 第三方服务交互放在 `src/lib/integrations`
+- 可复用业务组件放在 `src/components/shared`
 
-- [ ] **Phase 1: 初始化项目与配置**
-  - 初始化 Next.js, Tailwind, shadcn, Drizzle (SQLite), next-intl。配置好目录结构和基础样式。
-- [ ] **Phase 2: 数据库与安全核心层**
-  - 编写 Drizzle schema。
-  - 编写 `lib/utils/encryption.ts` 实现 AES-256-GCM 加解密。
-  - 配置 NextAuth.js 凭证登录机制。
-- [ ] **Phase 3: Server Actions (后端逻辑)**
-  - 编写管理 Providers 的 Actions (查、增、改，无删除)。
-  - 编写管理 API Keys 的 Actions (查、增、改、删)，并在内部集成加解密逻辑。
-- [ ] **Phase 4: 基础 UI 构建 (主布局与设置)**
-  - 实现全局登录页。
-  - 实现黑白双栏主布局。
-  - 实现“系统设置”弹窗 (包含修改密码表单、厂商管理表单)。
-- [ ] **Phase 5: 核心业务 UI**
-  - 实现侧边菜单（API Key 展示、用量统计、设置、退出）。
-  - 实现 AI 提供商列表（宽列表，更多面板承载编辑/删除）。
-  - 实现 API Key 单列表组件（每条记录展示全部字段与完整操作）。
-  - 实现新建/编辑 API Key 弹窗表单。
+## 6. 数据模型约束
 
-## 8. Agent Behavior Rules (Agent 行为准则)
+当前数据库设计以 `src/lib/db/schema.ts` 为准，关键点如下：
 
-1. **不要一次性输出几千行代码**：请按照 Phase 逐步执行，每次完成一个功能块后，继续下一个功能的开发。
-2. **缺省状态处理**：如果 Base URL 没有数据，请在 UI 上统一渲染为 `--`。
-3. **遇事不决先询问**：如果在 PRD 或本文档中遇到模糊的边界条件，请停止编写并向我提问，不要擅自做主。
-4. **UI 文档同步**：凡涉及 UI 布局、交互、组件结构的改动，必须同步更新 `AGENTS.md` 与 `Api-Key管理工具产品需求文档.md`。
+- `users`
+  - `id`
+  - `username`
+  - `password_hash`
+  - `preferred_locale`
+  - `created_at`
+- `providers`
+  - `id`
+  - `name`
+  - `base_url`
+  - `is_custom`
+- `api_keys`
+  - `id`
+  - `provider_id`
+  - `name`
+  - `api_key`
+  - `notes`
+  - `created_at`
+  - `updated_at`
+
+注意：
+
+- `base_url` 当前在 `providers` 表上，不在 `api_keys` 表上。
+- Provider 纯文本展示，不设计图标字段。
+- 任何新增字段都需要同时考虑 Drizzle schema、迁移脚本、类型、表单和多语言文案。
+
+## 7. 安全规则
+
+以下规则不能被绕开：
+
+- 严禁明文存储 API Key。写入数据库前必须加密，读取后只在服务端解密再返回前端。
+- 加密密钥来自 `ENCRYPTION_KEY`，需要满足 AES-256-GCM 所需的 32 字节要求。
+- 登录只允许 Credentials Provider。
+- 受保护页面未登录时必须重定向到 `/{locale}/login`。
+- 所有第三方请求必须经过 Next.js 后端接口，不允许浏览器直接请求外部 AI 服务。
+- Provider 删除仅在其名下没有 API Key 时才允许执行。
+
+当前后端代理入口：
+
+- `/api/test-key`
+- `/api/check-balance`
+- `/api/fetch-models`
+
+环境变量约定：
+
+- `AUTH_SECRET`
+- `ENCRYPTION_KEY`
+- `DATABASE_FILE`
+- `SEED_ADMIN_USERNAME`
+- `SEED_ADMIN_PASSWORD`
+
+补充说明：
+
+- 本地开发环境允许对 `AUTH_SECRET` 和 `ENCRYPTION_KEY` 使用代码内默认值，便于首次启动。
+- 生产环境应显式提供真实密钥，不应依赖开发默认值。
+- 仓库根目录提供 `.env.example` 作为本地配置模板。
+
+## 8. UI 与交互规范
+
+界面修改时请保持现有视觉方向和交互原则：
+
+- 保持黑白灰为主的极简风格，功能性成功或失败提示可使用必要的绿色或红色。
+- 主按钮使用深色底配浅色文字，背景优先使用 `bg-white` 或 `bg-zinc-50`。
+- 优先使用 shadcn/ui 组件；弹窗或抽屉优先使用 `Dialog` 或 `Sheet`。
+- PC 端保持三栏结构：
+  - 左侧为导航与账号菜单
+  - 中间为 Provider 列表
+  - 右侧为 API Key 单列表
+- 移动端保持单栏可操作，不要引入复杂的多面板切换。
+- API Key 页面遵循“单列表展示”，每条记录展示字段和操作，不拆成独立详情页。
+- Provider 的编辑与删除入口放在“更多”菜单内，不直接平铺按钮。
+- 账号菜单需要展示当前登录账号，并收纳语言切换、系统设置、退出登录。
+- 缺省值统一显示 `--`。
+- 时间字段只展示具体时间值，不额外显示 “Updated At” 之类的标签。
+- 复制操作使用 `navigator.clipboard`，并给出轻量 Toast 反馈。
+- 测活成功后，延迟小于 `500ms` 显示绿色，大于等于 `500ms` 显示红色。
+- 对暂不支持通过 API 查询余额或用量的 Provider，应展示官方账单或用量页面链接，便于用户直接跳转查看。
+
+## 9. 功能边界
+
+目前文档和代码应保持以下一致：
+
+- Provider 支持预置厂商自动初始化，也支持用户新增自定义厂商。
+- API Key 与 Provider 是多对一关系。
+- 测活、余额或用量查询、模型发现都依赖当前 Provider 的 `base_url` 和密钥。
+- 余额或用量查询不是所有 Provider 都支持，当前实现按白名单判断。
+- 模型发现优先走动态接口；Anthropic 使用官方 `/v1/models`，其余厂商在动态拉取失败时回退到内置推荐模型列表。
+- 分析页通过逐个请求后端接口聚合数据，不直接访问数据库中的第三方状态缓存。
+
+如果后续要扩展到更多 Provider，请同时更新：
+
+- `src/lib/constants/providers.ts`
+- `src/lib/integrations/provider-api.ts`
+- 多语言文案
+- 相关文档
+
+## 10. 开发方式
+
+建议按下面的顺序开展修改：
+
+1. 先确认需求是否与当前实现冲突。
+2. 需要改数据结构时，先改 schema 和迁移，再改 actions 与 UI。
+3. 需要改第三方接入时，优先放入 `src/lib/integrations`，不要把请求逻辑散落到组件中。
+4. 需要改 UI 时，同时检查桌面端和移动端表现。
+5. 修改完成后，尽量运行 `npm run typecheck`、`npm run lint` 或相关验证。
+6. 如果需求涉及启动、登录或本地初始化，优先检查 `.env.local`、`data/app.db` 和种子数据是否与当前服务进程一致。
+
+## 11. 文档同步要求
+
+凡是涉及以下内容的改动，都要同步更新文档：
+
+- 页面布局
+- 主要交互方式
+- 数据模型
+- 安全边界
+- 新增或删除的核心功能
+
+需要同步的文档至少包括：
+
+- `AGENTS.md`
+- `产品需求文档.md`
+
+如果需求拆解目录 `Requirements/` 中存在对应条目，也应一并更新，避免状态说明落后于代码。
