@@ -71,8 +71,8 @@
     "analyticsTotalKeys": "Total keys",
     "analyticsSupportedKeys": "Queryable keys",
     "analyticsSuccessKeys": "Successful checks",
-    "analyticsTotalValue": "Aggregated value",
-    "analyticsValueChart": "Value by key",
+    "analyticsTotalValue": "Total balance",
+    "analyticsValueChart": "Balance Chart",
     "analyticsProviderChart": "Provider distribution",
     "analyticsNoData": "No data available",
     "analyticsTable": "Asset table",
@@ -110,7 +110,22 @@
     "providerDeleteTitle": "Delete provider",
     "providerDeleteDescription": "A provider can be deleted only when no API keys are bound.",
     "providerActions": "Provider actions",
-    "accountMenu": "Account menu"
+    "accountMenu": "Account menu",
+    "exportJson": "Export JSON",
+    "importJson": "Import JSON",
+    "exportJsonDescription": "Export decrypted API keys grouped by provider as a JSON file.",
+    "importJsonDescription": "Import API keys from a JSON file. If both key name and key value already exist under the same provider, the entry is skipped; if only the name conflicts, a renamed key is created instead of overwriting.",
+    "exportNow": "Export now",
+    "importNow": "Import now",
+    "importJsonFile": "JSON file",
+    "importChooseFile": "Choose file",
+    "importNoFileSelected": "No file selected",
+    "transferSelectProviders": "Select providers",
+    "transferSelectAll": "Select all",
+    "transferProviderRequired": "Please select at least one provider",
+    "transferKeyCount": "{count} keys",
+    "exportSuccessSummary": "Exported {providers} providers / {keys} keys",
+    "importSuccessSummary": "Imported {providers} providers / {keys} keys"
   },
   "errors": {
     "unauthorized": "Session expired, please sign in again",
@@ -135,6 +150,7 @@
     "apiKeyNameRequired": "Name is required",
     "apiKeyProviderRequired": "Provider is required",
     "modelFetchFailed": "Failed to load models",
-    "providerDeleteBlockedByKeys": "Please delete or move all API keys under this provider first."
+    "providerDeleteBlockedByKeys": "Please delete or move all API keys under this provider first.",
+    "invalidImportJson": "Invalid import file format"
   }
 }

@@ -1,10 +1,16 @@
-﻿export type ProviderKind =
+import {
+  BALANCE_QUERY_ENDPOINT_SEEDS,
+  FALLBACK_MODEL_SEEDS,
+} from "@/lib/constants/providers";
+export type ProviderKind =
   | "openai"
   | "deepseek"
   | "moonshot"
   | "zhipu"
+  | "qwen"
   | "gemini"
   | "anthropic"
+  | "minimax"
   | "unknown";
 
 export type BalanceMetricType = "balance" | "usage";
@@ -67,72 +73,7 @@ export type ModelDiscoveryResult =
 
 const requestTimeoutMs = 20_000;
 
-const staticFallbackModels = {
-  openai: [
-    "gpt-5.2",
-    "gpt-5.2-chat-latest",
-    "gpt-5-mini",
-  ],
-  anthropic: [
-    "claude-sonnet-4-20250514",
-    "claude-opus-4-1-20250805",
-    "claude-3-5-haiku-latest",
-  ],
-  gemini: [
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-  ],
-  deepseek: [
-    "deepseek-chat",
-    "deepseek-reasoner",
-  ],
-  moonshot: [
-    "kimi-k2.5",
-    "kimi-k2",
-    "kimi-k2-thinking",
-  ],
-  zhipu: [
-    "glm-4.7-flash",
-    "glm-4.5",
-    "glm-4.5-air",
-  ],
-  xai: [
-    "grok-4.20-beta-latest",
-    "grok-4-1-fast-reasoning",
-    "grok-code-fast-1",
-  ],
-  qwen: [
-    "qwen-max-latest",
-    "qwen-plus",
-    "qwen-flash",
-  ],
-  baidu: [
-    "ERNIE-4.5-Turbo",
-    "ERNIE-X1-Turbo-32K",
-    "ERNIE-4.0-Turbo-8K",
-  ],
-  doubao: [
-    "Doubao-Seed-1.6",
-    "Doubao-Seed-1.6-flash",
-    "Doubao-1.5-pro-32k",
-  ],
-  hunyuan: [
-    "hunyuan-t1-latest",
-    "hunyuan-turbos",
-    "hunyuan-standard-256K",
-  ],
-  minimax: [
-    "MiniMax-M2.5",
-    "MiniMax-M2.5-highspeed",
-    "MiniMax-M1",
-  ],
-  lingyi: [
-    "yi-lightning",
-    "yi-large",
-    "yi-medium",
-  ],
-} as const;
+const staticFallbackModels = FALLBACK_MODEL_SEEDS;
 
 function uniqueModels(models: string[]) {
   return [...new Set(models)];
@@ -403,6 +344,14 @@ export function detectProviderKind(
   }
 
   if (
+    normalizedName.includes("qwen") ||
+    normalizedName.includes("aliyun") ||
+    normalizedBaseUrl.includes("dashscope.aliyuncs.com")
+  ) {
+    return "qwen";
+  }
+
+  if (
     normalizedName.includes("gemini") ||
     normalizedBaseUrl.includes("generativelanguage.googleapis.com")
   ) {
@@ -417,6 +366,15 @@ export function detectProviderKind(
     return "anthropic";
   }
 
+  if (
+    normalizedName.includes("minimax") ||
+    normalizedBaseUrl.includes("minimax.chat") ||
+    normalizedBaseUrl.includes("minimaxi.com") ||
+    normalizedBaseUrl.includes("minimax.io")
+  ) {
+    return "minimax";
+  }
+
   return "unknown";
 }
 
@@ -428,8 +386,12 @@ function defaultModelByProvider(providerKind: ProviderKind) {
       return "moonshot-v1-8k";
     case "zhipu":
       return "glm-4-flash";
+    case "qwen":
+      return "qwen-plus";
     case "gemini":
       return "gemini-2.0-flash";
+    case "minimax":
+      return "MiniMax-M2.5";
     default:
       return "gpt-4o-mini";
   }
@@ -518,25 +480,19 @@ function getBalanceQuerySpec(providerKind: ProviderKind): {
   endpoint: string;
   metricType: BalanceMetricType;
 } | null {
-  switch (providerKind) {
-    case "deepseek":
-      return {
-        endpoint: "https://api.deepseek.com/user/balance",
-        metricType: "balance",
-      };
-    case "moonshot":
-      return {
-        endpoint: "https://api.moonshot.cn/v1/users/me/balance",
-        metricType: "balance",
-      };
-    case "openai":
-      return {
-        endpoint: "https://api.openai.com/v1/dashboard/billing/usage",
-        metricType: "usage",
-      };
-    default:
-      return null;
+  const seed =
+    BALANCE_QUERY_ENDPOINT_SEEDS[
+      providerKind as keyof typeof BALANCE_QUERY_ENDPOINT_SEEDS
+    ];
+
+  if (!seed) {
+    return null;
   }
+
+  return {
+    endpoint: seed.endpoint,
+    metricType: seed.metricType as BalanceMetricType,
+  };
 }
 
 export async function runBalanceCheck(input: {

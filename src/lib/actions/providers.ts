@@ -7,6 +7,7 @@ import {
   BUILTIN_PROVIDERS,
   DEFAULT_PROVIDERS,
   LEGACY_PROVIDER_ARCHIVE_SUFFIX,
+  REMOVED_BUILTIN_PROVIDER_NAMES,
 } from "@/lib/constants/providers";
 import { getDb, persistDatabase } from "@/lib/db";
 import { apiKeys, providers } from "@/lib/db/schema";
@@ -62,13 +63,71 @@ function sortProviders(items: Array<typeof providers.$inferSelect>) {
   });
 }
 
+function cleanupRemovedBuiltinProviders(db: Awaited<ReturnType<typeof getDb>>) {
+  let changed = false;
+
+  for (const providerName of REMOVED_BUILTIN_PROVIDER_NAMES) {
+    const existing = db
+      .select()
+      .from(providers)
+      .where(eq(providers.name, providerName))
+      .get();
+
+    if (!existing) {
+      continue;
+    }
+
+    const keyCount = db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(eq(apiKeys.providerId, existing.id))
+      .all().length;
+
+    if (keyCount === 0) {
+      db.delete(providers).where(eq(providers.id, existing.id)).run();
+      changed = true;
+      continue;
+    }
+
+    let archiveName = `${existing.name}${LEGACY_PROVIDER_ARCHIVE_SUFFIX}`;
+    const archiveConflict = db
+      .select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.name, archiveName))
+      .get();
+
+    if (archiveConflict && archiveConflict.id !== existing.id) {
+      archiveName = `${archiveName}-${existing.id}`;
+    }
+
+    db.update(providers)
+      .set({
+        name: archiveName,
+        isCustom: true,
+      })
+      .where(eq(providers.id, existing.id))
+      .run();
+    changed = true;
+  }
+
+  return changed;
+}
+
 export async function seedDefaultProviders() {
   if (!(await hasSession())) {
     return;
   }
 
   const db = await getDb();
-  let changed = false;
+  let changed = cleanupRemovedBuiltinProviders(db);
+
+  const existingProviders = db.select({ id: providers.id }).from(providers).all();
+  if (existingProviders.length > 0) {
+    if (changed) {
+      await persistDatabase();
+    }
+    return;
+  }
 
   for (const item of BUILTIN_PROVIDERS) {
     const existing = db

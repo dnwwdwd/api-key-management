@@ -5,6 +5,7 @@ import {
   BUILTIN_PROVIDERS,
   LEGACY_PROVIDER_ARCHIVE_SUFFIX,
   LEGACY_PROVIDER_RENAMES,
+  REMOVED_BUILTIN_PROVIDER_NAMES,
 } from "../constants/providers";
 import { hashPassword } from "../utils/password";
 
@@ -58,8 +59,50 @@ function normalizeLegacyProviderNames(db: DbClient) {
   }
 }
 
+function cleanupRemovedBuiltinProviders(db: DbClient) {
+  for (const providerName of REMOVED_BUILTIN_PROVIDER_NAMES) {
+    const existing = db
+      .select()
+      .from(providers)
+      .where(eq(providers.name, providerName))
+      .get();
+
+    if (!existing) {
+      continue;
+    }
+
+    const keyCount = db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(eq(apiKeys.providerId, existing.id))
+      .all().length;
+
+    if (keyCount === 0) {
+      db.delete(providers).where(eq(providers.id, existing.id)).run();
+      continue;
+    }
+
+    let archiveName = `${existing.name}${LEGACY_PROVIDER_ARCHIVE_SUFFIX}`;
+    const archiveConflict = db
+      .select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.name, archiveName))
+      .get();
+
+    if (archiveConflict && archiveConflict.id !== existing.id) {
+      archiveName = `${archiveName}-${existing.id}`;
+    }
+
+    db.update(providers)
+      .set({ name: archiveName, isCustom: true })
+      .where(eq(providers.id, existing.id))
+      .run();
+  }
+}
+
 async function seedProviders(db: DbClient) {
   normalizeLegacyProviderNames(db);
+  cleanupRemovedBuiltinProviders(db);
 
   for (const provider of BUILTIN_PROVIDERS) {
     const existing = db

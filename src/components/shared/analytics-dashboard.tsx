@@ -40,6 +40,28 @@ type AnalyticsRow = {
 
 const chartColors = ["#111827", "#374151", "#6B7280", "#9CA3AF", "#D1D5DB"];
 
+function BalanceTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value?: number | string; dataKey?: string | number }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const value = Number(payload[0]?.value ?? 0);
+  return (
+    <div className="rounded-md border border-zinc-200 bg-white p-2 text-xs shadow-sm">
+      <p className="font-medium text-zinc-900">{label ?? "--"}</p>
+      <p className="mt-1 text-zinc-600">{value.toFixed(4)}</p>
+    </div>
+  );
+}
+
 export function AnalyticsDashboard({ locale, username, providers, items }: AnalyticsDashboardProps) {
   const t = useTranslations();
   const [isLoading, setIsLoading] = useState(true);
@@ -136,26 +158,37 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
     const totalKeys = items.length;
     const supportedKeys = rows.filter((item) => item.status !== "unsupported").length;
     const successKeys = rows.filter((item) => item.status === "success").length;
-    const totalNumeric = rows.reduce((total, item) => total + (item.numericValue ?? 0), 0);
+    const totalBalance = rows.reduce((total, item) => {
+      if (item.status !== "success" || item.metricType !== "balance") {
+        return total;
+      }
+
+      return total + (item.numericValue ?? 0);
+    }, 0);
 
     return {
       totalKeys,
       supportedKeys,
       successKeys,
-      totalNumeric,
+      totalBalance,
     };
   }, [items.length, rows]);
 
-  const valueChartData = useMemo(
-    () =>
-      rows
-        .filter((item) => item.status === "success")
-        .map((item) => ({
-          keyName: item.keyName,
-          value: item.numericValue ?? 0,
-        })),
-    [rows],
-  );
+  const valueChartData = useMemo(() => {
+    const grouped = rows.reduce<Record<string, number>>((acc, item) => {
+      if (item.status !== "success" || item.metricType !== "balance") {
+        return acc;
+      }
+
+      acc[item.providerName] = (acc[item.providerName] ?? 0) + (item.numericValue ?? 0);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([providerName, value]) => ({
+      providerName,
+      value,
+    }));
+  }, [rows]);
 
   const providerChartData = useMemo(() => {
     const grouped = rows.reduce<Record<string, number>>((acc, item) => {
@@ -168,6 +201,36 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
       count,
       fill: chartColors[index % chartColors.length],
     }));
+  }, [rows]);
+
+  const sortedRows = useMemo(() => {
+    return [...rows]
+      .map((row, index) => ({ row, index }))
+      .sort((left, right) => {
+        const leftBalance =
+          left.row.status === "success" &&
+          left.row.metricType === "balance" &&
+          typeof left.row.numericValue === "number"
+            ? left.row.numericValue
+            : null;
+        const rightBalance =
+          right.row.status === "success" &&
+          right.row.metricType === "balance" &&
+          typeof right.row.numericValue === "number"
+            ? right.row.numericValue
+            : null;
+
+        if (leftBalance !== null && rightBalance !== null) {
+          if (rightBalance !== leftBalance) {
+            return rightBalance - leftBalance;
+          }
+        } else if (leftBalance !== null || rightBalance !== null) {
+          return leftBalance !== null ? -1 : 1;
+        }
+
+        return left.index - right.index;
+      })
+      .map((item) => item.row);
   }, [rows]);
 
   const chartConfig = {
@@ -190,6 +253,7 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
             username={username}
             providers={providers}
             activeMenu="analytics"
+            showOnMobile
           />
 
           <div className="min-h-0 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-4 md:p-6">
@@ -226,7 +290,7 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
               </div>
               <div className="rounded-xl border border-zinc-200 bg-white p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">{t("dashboard.analyticsTotalValue")}</p>
-                <p className="mt-2 text-2xl font-semibold text-zinc-950">{metrics.totalNumeric.toFixed(2)}</p>
+                <p className="mt-2 text-2xl font-semibold text-zinc-950">{metrics.totalBalance.toFixed(4)}</p>
               </div>
             </section>
 
@@ -243,9 +307,9 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
                   <ChartContainer className="mt-4" config={chartConfig}>
                     <BarChart data={valueChartData}>
                       <CartesianGrid vertical={false} stroke="#E4E4E7" />
-                      <XAxis dataKey="keyName" tickLine={false} axisLine={false} tickMargin={10} />
+                      <XAxis dataKey="providerName" tickLine={false} axisLine={false} tickMargin={10} />
                       <YAxis tickLine={false} axisLine={false} width={52} />
-                      <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                      <ChartTooltip cursor={false} content={<BalanceTooltip />} />
                       <Bar dataKey="value" fill="var(--color-value)" radius={4} />
                     </BarChart>
                   </ChartContainer>
@@ -301,7 +365,7 @@ export function AnalyticsDashboard({ locale, username, providers, items }: Analy
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((row) => (
+                      {sortedRows.map((row) => (
                         <tr key={row.keyId} className="border-b border-gray-100 text-zinc-700">
                           <td className="px-3 py-2 font-medium text-zinc-900">{row.keyName}</td>
                           <td className="px-3 py-2">{row.providerName}</td>

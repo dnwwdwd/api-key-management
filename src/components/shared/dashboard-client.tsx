@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { BarChart3, MoreHorizontal, Plus, Search } from "lucide-react";
+import { BarChart3, Download, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deleteApiKeyAction, type ApiKeyView } from "@/lib/actions/api-keys";
 import { deleteProviderAction, updateProviderAction } from "@/lib/actions/providers";
 import { AccountMenu } from "./account-menu";
+import { ApiKeyTransferDialog } from "./api-key-transfer-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { KeyFormDialog } from "./key-form-dialog";
 import { KeyRecordList } from "./key-record-list";
@@ -50,6 +51,8 @@ export function DashboardClient({
   const [keySearch, setKeySearch] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiKeyView | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiKeyView | null>(null);
 
@@ -258,15 +261,35 @@ export function DashboardClient({
 
           <main className="min-h-0 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-4">
             <div className="border-b border-zinc-200 pb-4">
-              <Button
-                type="button"
-                onClick={openCreateDialog}
-                className="w-full md:w-auto"
-                aria-label={t("dashboard.newKey")}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t("dashboard.newKey")}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={openCreateDialog}
+                  className="w-full md:w-auto"
+                  aria-label={t("dashboard.newKey")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("dashboard.newKey")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setExportDialogOpen(true)}
+                  className="w-full md:w-auto"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {t("dashboard.exportJson")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setImportDialogOpen(true)}
+                  className="w-full md:w-auto"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("dashboard.importJson")}
+                </Button>
+              </div>
 
               <div className="relative mt-4 w-full">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -328,6 +351,26 @@ export function DashboardClient({
                 <Plus className="mr-2 h-4 w-4" />
                 {t("dashboard.newKey")}
               </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setExportDialogOpen(true)}
+                  className="w-full"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {t("dashboard.exportJson")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setImportDialogOpen(true)}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("dashboard.importJson")}
+                </Button>
+              </div>
 
               <div className="relative w-full">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -357,6 +400,18 @@ export function DashboardClient({
         onOpenChange={setFormOpen}
         providers={providers}
         editTarget={editTarget}
+      />
+      <ApiKeyTransferDialog
+        mode="export"
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        providers={providers}
+      />
+      <ApiKeyTransferDialog
+        mode="import"
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        providers={providers}
       />
 
       <Dialog

@@ -71,8 +71,8 @@
     "analyticsTotalKeys": "总密钥数",
     "analyticsSupportedKeys": "可查询密钥数",
     "analyticsSuccessKeys": "成功返回数",
-    "analyticsTotalValue": "聚合数值",
-    "analyticsValueChart": "密钥维度数据图",
+    "analyticsTotalValue": "总余额",
+    "analyticsValueChart": "余额图",
     "analyticsProviderChart": "厂商资产分布",
     "analyticsNoData": "暂无可展示数据",
     "analyticsTable": "资产明细表",
@@ -110,7 +110,22 @@
     "providerDeleteTitle": "删除厂商",
     "providerDeleteDescription": "仅当该厂商未绑定任何 API Key 时可删除。",
     "providerActions": "厂商操作",
-    "accountMenu": "账号菜单"
+    "accountMenu": "账号菜单",
+    "exportJson": "导出 JSON",
+    "importJson": "导入 JSON",
+    "exportJsonDescription": "按 Provider 分组导出已解密 API Key 为 JSON 文件。",
+    "importJsonDescription": "从 JSON 文件导入 API Key。若同一 Provider 下 Key 名与值都相同则跳过；若仅 Key 名冲突则自动重命名后新增，不覆盖原有 Key。",
+    "exportNow": "导出",
+    "importNow": "导入",
+    "importJsonFile": "JSON 文件",
+    "importChooseFile": "选择文件",
+    "importNoFileSelected": "未选择任何文件",
+    "transferSelectProviders": "选择 Provider",
+    "transferSelectAll": "全选",
+    "transferProviderRequired": "请至少选择一个 Provider",
+    "transferKeyCount": "{count} 个 Key",
+    "exportSuccessSummary": "已导出 {providers} 个 Provider / {keys} 个 Key",
+    "importSuccessSummary": "已导入 {providers} 个 Provider / {keys} 个 Key"
   },
   "errors": {
     "unauthorized": "登录状态已失效，请重新登录",
@@ -135,6 +150,7 @@
     "apiKeyNameRequired": "名称不能为空",
     "apiKeyProviderRequired": "请选择厂商",
     "modelFetchFailed": "模型拉取失败",
-    "providerDeleteBlockedByKeys": "请先删除或转移该厂商下的所有 API Key！"
+    "providerDeleteBlockedByKeys": "请先删除或转移该厂商下的所有 API Key！",
+    "invalidImportJson": "导入文件格式无效"
   }
 }
